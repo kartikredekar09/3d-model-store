@@ -6,22 +6,6 @@
 -- Prices are integer rupees (₹). The store code (lib/) mirrors these tables.
 
 -- ---------------------------------------------------------------------------
--- Helper: is the current user an admin?
--- SECURITY DEFINER so it can read profiles without triggering RLS recursion.
--- ---------------------------------------------------------------------------
-create or replace function public.is_admin()
-returns boolean
-language sql
-security definer
-stable
-as $$
-  select exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
-  );
-$$;
-
--- ---------------------------------------------------------------------------
 -- profiles — one row per auth user. Created automatically on sign-up.
 -- To make someone an admin: update profiles set role = 'admin' where email = '...';
 -- ---------------------------------------------------------------------------
@@ -202,6 +186,25 @@ create table if not exists public.coupons (
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+-- ---------------------------------------------------------------------------
+-- Helper: is the current user an admin?
+-- SECURITY DEFINER so it can read profiles without triggering RLS recursion.
+-- Defined here, AFTER the profiles table: PostgreSQL validates the body of
+-- a SQL-language function when it is created, so defining it earlier fails
+-- with "relation public.profiles does not exist".
+-- ---------------------------------------------------------------------------
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+stable
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Row Level Security
